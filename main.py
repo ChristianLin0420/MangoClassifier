@@ -216,3 +216,62 @@ def plot_learning_curves(history) :
     plt.show()
 
 plot_learning_curves(history)
+
+################################# Predict images #################################
+test_mango_dir = os.path.join("test_image")
+test_mango_fnames = os.listdir(test_mango_dir)
+
+img_files = [os.path.join(test_mango_dir, f) for f in test_mango_fnames]
+img_path = random.choice(img_files)
+
+# Read the testing image and show it
+img = load_img(img_path, target_size = (800, 800)) # This is a PIL image
+plt.title(img_path)
+plt.grid(False)
+plt.imshow(img)
+
+labels = ['等級A', '等級B', '等級C']
+
+# Convert image to analysible format for model (800 x 800 x 3, float32)
+x = img_to_array(img)
+x = x.reshape((1,) + x.shape)
+x /= 255
+
+start = time.time()
+result = model.predict(x)
+finish = time.time()
+
+pred = result.argmax(axis = 1)[0]
+pred_prob = result[0][pred]
+
+print("Result = %f" %pred_prob)
+print("test time : %f second" %(finish - start))
+print("Has {: .2f}% probabilty is {}" .format(pred_prob * 100, labels[pred]))
+
+################################# Accuray of the model to predict training set #################################
+
+y_pred = model.predict(x_test)
+
+count = 0
+for i in range(len(y_pred)) :
+    if(np.argmax(y_pred[i]) == np.argmax(y_test[i])) :
+        count += 1
+    
+score = count / len(y_pred)
+print("Accuray is %.2f%s" % (score * 100, '%'))
+
+# Label after predicting
+predict_label = np.argmax(y_pred, axis = 1)
+print(predict_label)
+print(len(predict_label))
+
+true_label = y_label_org[84:]
+true_label = np.array(true_label)
+print(true_label)
+print(len(true_label))
+
+predictions = model.predict_classes(x_test)
+print(predictions)
+print(len(predictions))
+
+pd.crosstab(true_label,predict_label,rownames=['Actual value'],colnames=['Predicted value'])
