@@ -24,6 +24,8 @@ from tensorflow.keras import layers
 from tensorflow import keras
 import tensorflow as tf
 
+# External files
+from Adaboost import ADABoost
 
 # Show package version
 print(pd.__version__)
@@ -47,7 +49,7 @@ train_mango_fnames = os.listdir(Sample_pics_path)
 label_Survey = pd.read_csv("Sample_SurveyLabel.csv", encoding = "utf8")
 label_Survey.head()
 
-sns.countplot(label_Survey['Level'], hue = label_Survey["Level"])
+# sns.countplot(label_Survey['Level'], hue = label_Survey["Level"])
 
 ################################# Create label and data set #################################
 csvfile = open('Sample_Label.csv')
@@ -101,152 +103,45 @@ Y = tf.strings.to_number(Y, out_type = tf.float32)
 # Implementing one-hotencoding
 Y = np_utils.to_categorical(Y, num_classes = 3)
 
-################################# Distribute the ratio of training set and testing set #################################
-x_train = X[:84]
-y_train = Y[:84]
-x_test = X[84:]
-y_test = Y[84:]
+################################# ADABoost #################################
+x_train = X[:94]
+y_train = Y[:94]
+x_test = X[:94]
+y_test = Y[:94]
 
-# for i in range(0, picnum) :
-#     print(X[i])
-#     print(Y[i])
 
-y_train_label = [0., 0., 0.]
-for i in range(0, len(y_train)) :
-    y_train_label = y_train[i] + y_train_label
-
-y_test_label = [0., 0., 0.]
-for i in range(0, len(y_test)) :
-    # print(y_test[i])
-    y_test_label = y_test[i] + y_test_label
-
-# print(y_train_label)
-# print(y_test_label)
-
-################################# Construct CNN model #################################
-model = tf.keras.Sequential()
-model.add(layers.Conv2D(16, (3, 3),
-                 strides = (1, 1),
-                 input_shape = (800, 800, 3),
-                 padding = 'same',
-                 activation = 'relu',
-                 ))
-
-model.add(layers.BatchNormalization())
-model.add(layers.MaxPooling2D(pool_size = (2, 2), strides = None))
-
-model.add(layers.Conv2D(32, (3, 3),
-                 strides = (1, 1),
-                 padding = 'same',
-                 activation = 'relu',
-                 ))
-
-model.add(layers.MaxPooling2D(pool_size = (2, 2), strides = None))
-
-model.add(layers.Conv2D(64, (3, 3),
-                 strides = (1, 1),
-                 padding = 'same',
-                 activation = 'relu',
-                 ))
-
-model.add(layers.MaxPooling2D(pool_size = (2, 2), strides = None))
-model.add(layers.Flatten())
-
-model.add(layers.Dense(64, activation = 'relu'))
-model.add(layers.Dense(128, activation = 'relu'))
-
-model.add(layers.Dropout(0.2))
-model.add(layers.Dense(3, activation = 'softmax'))
-model.summary()
-
-# Add optimizer 
-adam = optimizers.adam(lr = 5)
-model.compile(optimizer = 'adam',
-              loss = tf.keras.losses.CategoricalCrossentropy(),
-              metrics = ['acc'])
-
-## parameters explaniation ##
-### zca_whitening           -- implementing zca-whitening
-### rotation_range          -- angle for image to rotate when data increasing
-### width_shift_range       -- amplitude of horizontal offset when data increasing
-### shear_range             -- strength of shear
-### zoom_range              -- amplitude of random zoom
-### horizontal_flip         -- implementing random horizontal rotation
-### fill_mode               -- method for out-of-bound poinst while transformin
-
-datagen = ImageDataGenerator(
-    zca_whitening = False,
-    rotation_range = 40,
-    width_shift_range = 0.2,
-    height_shift_range = 0.2,
-    shear_range = 0.2,
-    zoom_range = 0.2,
-    horizontal_flip = True,
-    fill_mode = 'nearest'
-)
-
-# Import reforcement parameters for images
-datagen.fit(x_train)
-x_train = x_train / 255
-y_train = y_train / 255
-
-# Set HyperParameters
-batch_size = 4
-epochs = 10
-
-file_name = str(epochs) + '_' + str(batch_size)
-
-# Add earlyStopping and Tensorboard 
-CB = tf.keras.callbacks.EarlyStopping(monitor = 'val_loss', patience = 2)
-TB = keras.callbacks.TensorBoard(log_dir = './log' + "_" + file_name, histogram_freq = 1)
-
-history = model.fit(
-    x = x_train, y = y_train,
-    batch_size = batch_size, 
-    epochs = epochs,
-    validation_split = 0.2,
-    callbacks = [CB]
-)
-
-################################# Draw Model learning result #################################
-def plot_learning_curves(history) :
-    pd.DataFrame(history.history).plot(figsize = (8, 5))
-    plt.grid(True)
-    plt.gca().set_ylim(0, 1)
-    plt.show()
-
-plot_learning_curves(history)
+model = ADABoost(x_train, y_train).adaboost()
 
 ################################# Predict images #################################
-test_mango_dir = os.path.join("test_image")
-test_mango_fnames = os.listdir(test_mango_dir)
+# test_mango_dir = os.path.join("test_image")
+# test_mango_fnames = os.listdir(test_mango_dir)
 
-img_files = [os.path.join(test_mango_dir, f) for f in test_mango_fnames]
-img_path = random.choice(img_files)
+# img_files = [os.path.join(test_mango_dir, f) for f in test_mango_fnames]
+# img_path = random.choice(img_files)
 
-# Read the testing image and show it
-img = load_img(img_path, target_size = (800, 800)) # This is a PIL image
-plt.title(img_path)
-plt.grid(False)
-plt.imshow(img)
+# # Read the testing image and show it
+# img = load_img(img_path, target_size = (800, 800)) # This is a PIL image
+# plt.title(img_path)
+# plt.grid(False)
+# plt.imshow(img)
 
-labels = ['等級A', '等級B', '等級C']
+# labels = ['等級A', '等級B', '等級C']
 
-# Convert image to analysible format for model (800 x 800 x 3, float32)
-x = img_to_array(img)
-x = x.reshape((1,) + x.shape)
-x /= 255
+# # Convert image to analysible format for model (800 x 800 x 3, float32)
+# x = img_to_array(img)
+# x = x.reshape((1,) + x.shape)
+# x /= 255
 
-start = time.time()
-result = model.predict(x)
-finish = time.time()
+# start = time.time()
+# result = model.predict(x)
+# finish = time.time()
 
-pred = result.argmax(axis = 1)[0]
-pred_prob = result[0][pred]
+# pred = result.argmax(axis = 1)[0]
+# pred_prob = result[0][pred]
 
-print("Result = %f" %pred_prob)
-print("test time : %f second" %(finish - start))
-print("Has {: .2f}% probabilty is {}" .format(pred_prob * 100, labels[pred]))
+# print("Result = %f" %pred_prob)
+# print("test time : %f second" %(finish - start))
+# print("Has {: .2f}% probabilty is {}" .format(pred_prob * 100, labels[pred]))
 
 ################################# Accuray of the model to predict training set #################################
 
