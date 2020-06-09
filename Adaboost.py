@@ -28,7 +28,7 @@ class ADABoost :
         self.y_test = label_data
         self.batch_size = 4
         self.epochs = 20
-        self.weight_list = np.repeat(float(1/self.epochs), self.epochs)
+        self.weight_list = np.repeat(float(1/len(self.x_train)), len(self.x_train))
         self.hypothesis_list = []
         self.hypothesis_weight_list = []
         
@@ -139,14 +139,18 @@ class ADABoost :
             count = 0
 
             for j in range(len(y_pred)) :
-                if(np.argmax(y_pred) == np.argmax(self.y_test)) :
+                print(np.argmax(y_pred[j]))
+                print(np.argmax(self.y_test[j]))
+                print("----------------------------------------------")
+
+                if(np.argmax(y_pred[j]) == np.argmax(self.y_test[j])) :
                     self.weight_list[j] = self.weight_list[j] * error / (1 - error)
                     count += 1
                 else :
                     error += self.weight_list[j]
 
             score = count / len(y_pred)
-            print(i + "-iteration: Accuracy is %.2f%s" % (score * 100, '%'))
+            print(str(i) + "-iteration: Accuracy is %.2f%s" % (score * 100, '%'))
 
             weight_sum = 0
 
@@ -172,7 +176,7 @@ class ADABoost :
         max_performence_index = -1
 
         for i in range(len(self.hypothesis_list)) :
-            print(i + " -> hypothesis weight is %.2f" %(self.hypothesis_weight_list[i]))
+            print(str(i) + " -> hypothesis weight is %.2f" %(self.hypothesis_weight_list[i]))
 
             if (self.hypothesis_weight_list[i] > max_performence) :
                 max_performence = self.hypothesis_weight_list[i]
