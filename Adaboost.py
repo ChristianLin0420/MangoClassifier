@@ -20,13 +20,16 @@ from tensorflow.keras import layers
 from tensorflow import keras
 import tensorflow as tf
 
+# Sklearn deep learning package
+from sklearn.ensemble import VotingClassifier
+
 class ADABoost :
     def __init__(self, img_data, label_data):
         self.x_train = img_data
         self.y_train = label_data
         self.x_test = img_data
         self.y_test = label_data
-        self.batch_size = 4
+        self.batch_size = 10
         self.epochs = 20
         self.weight_list = np.repeat(float(1/len(self.x_train)), len(self.x_train))
         self.hypothesis_list = []
@@ -135,42 +138,38 @@ class ADABoost :
             self.hypothesis_list.append(new_model)
 
             y_pred = new_model.predict(self.x_test)
+
             error = 0
-            count = 0
+            error_count = 0
+            total_error = 0
 
             for j in range(len(y_pred)) :
-                print(np.argmax(y_pred[j]))
-                print(np.argmax(self.y_test[j]))
-                print("----------------------------------------------")
+                total_error += self.weight_list[j]
 
-                if(np.argmax(y_pred[j]) == np.argmax(self.y_test[j])) :
-                    self.weight_list[j] = self.weight_list[j] * error / (1 - error)
-                    count += 1
-                else :
+                if(np.argmax(y_pred[j]) != np.argmax(self.y_test[j])) :
                     error += self.weight_list[j]
+                    error_count += 1
 
-            score = count / len(y_pred)
-            print(str(i) + "-iteration: Accuracy is %.2f%s" % (score * 100, '%'))
+            print("Total error is " + str(total_error) + ", current error is " + str(error)) 
 
-            weight_sum = 0
+            error /= total_error
+            error_count /= len(y_pred)
+            new_hypothesis_weight = np.log((1 - error) / error)
 
-            # Normalized weight list
-            for k in range(len(self.weight_list)) :
-                weight_sum += self.weight_list[k]
-            
-            print("Sum of weight list is ", weight_sum)
+            print("error of the decision tree is : " + str(error))
+            print("New hypothesis weight is " + str(new_hypothesis_weight))
+            print(str(i) + "-iteration: Accuracy is %.2f%s" % (error * 100, '%'))
 
-            for k in range(len(self.weight_list)) :
-                self.weight_list[k] /= weight_sum
-
-            new_hypothesis_weight = np.log(1 - error) / error
-
-            print("New hypothesis weight is ", new_hypothesis_weight)
+            # update training data weight
+            for j in range(len(self.weight_list)) :
+                if(np.argmax(y_pred[j] != np.argmax(self.y_test[j]))) :
+                    self.weight_list[j] *= np.exp(new_hypothesis_weight)
 
             self.hypothesis_weight_list.append(new_hypothesis_weight)
         
         # Choose best classifier
         assert len(self.hypothesis_list) == len(self.hypothesis_weight_list)
+        assert len(self.hypothesis_list) == len(self.epochs)
 
         max_performence = 0
         max_performence_index = -1
@@ -182,7 +181,19 @@ class ADABoost :
                 max_performence = self.hypothesis_weight_list[i]
                 max_performence_index = i
 
-        return self.hypothesis_list[max_performence_index]
+        # Create vote classifier 
+        estimators_list = []
+
+        for i in range(len(self.hypothesis_list)) :
+            new_estimator = (str(i), self.hypothesis_list[i])
+            estimators_list.append(new_estimator)
+
+        vote_classifier = VotingClassifier(
+                                           estimators = estimators_list,
+                                           voting = 'soft',
+                                           weights = self.hypothesis_weight_list)
+
+        return vote_classifier
 
 
 
