@@ -103,11 +103,13 @@ Y = tf.strings.to_number(Y, out_type = tf.float32)
 # Implementing one-hotencoding
 Y = np_utils.to_categorical(Y, num_classes = 3)
 
+data_count_to_train = 70 # default is 94
+
 ################################# ADABoost #################################
-x_train = X[:94]
-y_train = Y[:94]
-x_test = X[:94]
-y_test = Y[:94]
+x_train = X[:data_count_to_train]
+y_train = Y[:data_count_to_train]
+x_test = X[:data_count_to_train]
+y_test = Y[:data_count_to_train]
 
 
 model = ADABoost(x_train, y_train).adaboost()
@@ -145,7 +147,7 @@ model = ADABoost(x_train, y_train).adaboost()
 
 ################################# Accuray of the model to predict training set #################################
 
-y_pred = model.predict(x_test)
+y_pred = model.predict(x_test, y_test)
 
 count = 0
 for i in range(len(y_pred)) :

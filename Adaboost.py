@@ -31,6 +31,7 @@ class ADABoost :
         self.y_test = label_data
         self.batch_size = 10
         self.epochs = 20
+        self.estimator_count = 3
         self.weight_list = np.repeat(float(1/len(self.x_train)), len(self.x_train))
         self.hypothesis_list = []
         self.hypothesis_weight_list = []
@@ -133,7 +134,7 @@ class ADABoost :
     
     # Implement ADABoost
     def adaboost(self) :
-        for i in range(self.epochs) :
+        for i in range(self.estimator_count) :
             new_model = self.CNN_model()
             self.hypothesis_list.append(new_model)
 
@@ -156,7 +157,7 @@ class ADABoost :
             error_count /= len(y_pred)
             new_hypothesis_weight = np.log((1 - error) / error)
 
-            print("error of the decision tree is : " + str(error))
+            print("error of the decision tree is : " + str(error_count))
             print("New hypothesis weight is " + str(new_hypothesis_weight))
             print(str(i) + "-iteration: Accuracy is %.2f%s" % (error * 100, '%'))
 
@@ -169,7 +170,7 @@ class ADABoost :
         
         # Choose best classifier
         assert len(self.hypothesis_list) == len(self.hypothesis_weight_list)
-        assert len(self.hypothesis_list) == len(self.epochs)
+        assert len(self.hypothesis_list) == self.estimator_count
 
         max_performence = 0
         max_performence_index = -1
@@ -188,8 +189,9 @@ class ADABoost :
             new_estimator = (str(i), self.hypothesis_list[i])
             estimators_list.append(new_estimator)
 
-        vote_classifier = VotingClassifier(
-                                           estimators = estimators_list,
+        assert len(estimators_list) == self.estimator_count
+
+        vote_classifier = VotingClassifier(estimators = estimators_list,
                                            voting = 'soft',
                                            weights = self.hypothesis_weight_list)
 
