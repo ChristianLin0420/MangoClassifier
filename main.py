@@ -103,7 +103,7 @@ Y = tf.strings.to_number(Y, out_type = tf.float32)
 # Implementing one-hotencoding
 Y = np_utils.to_categorical(Y, num_classes = 3)
 
-data_count_to_train = 70 # default is 94
+data_count_to_train = 90 # default is 94
 
 ################################# ADABoost #################################
 x_train = X[:data_count_to_train]
@@ -112,7 +112,7 @@ x_test = X[:data_count_to_train]
 y_test = Y[:data_count_to_train]
 
 
-model = ADABoost(x_train, y_train).adaboost()
+y_pred = ADABoost(x_train, y_train).adaboost()
 
 ################################# Predict images #################################
 # test_mango_dir = os.path.join("test_image")
@@ -147,28 +147,29 @@ model = ADABoost(x_train, y_train).adaboost()
 
 ################################# Accuray of the model to predict training set #################################
 
-y_pred = model.predict(x_test, y_test)
+# y_pred = model.fit(x_test, y_test).predict(x_test)
 
 count = 0
 for i in range(len(y_pred)) :
+    print(str(np.argmax(y_pred[i])) + ", " + str(np.argmax(y_test[i])))
     if(np.argmax(y_pred[i]) == np.argmax(y_test[i])) :
         count += 1
     
 score = count / len(y_pred)
 print("Accuray is %.2f%s" % (score * 100, '%'))
 
-# Label after predicting
-predict_label = np.argmax(y_pred, axis = 1)
-print(predict_label)
-print(len(predict_label))
+# # Label after predicting
+# predict_label = np.argmax(y_pred, axis = 1)
+# print(predict_label)
+# print(len(predict_label))
 
-true_label = y_label_org[84:]
-true_label = np.array(true_label)
-print(true_label)
-print(len(true_label))
+# true_label = y_label_org[84:]
+# true_label = np.array(true_label)
+# print(true_label)
+# print(len(true_label))
 
-predictions = model.predict_classes(x_test)
-print(predictions)
-print(len(predictions))
+# predictions = model.predict_classes(x_test)
+# print(predictions)
+# print(len(predictions))
 
-pd.crosstab(true_label,predict_label,rownames=['Actual value'],colnames=['Predicted value'])
+# pd.crosstab(true_label,predict_label,rownames=['Actual value'],colnames=['Predicted value'])

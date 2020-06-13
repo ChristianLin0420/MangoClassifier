@@ -21,6 +21,7 @@ from tensorflow import keras
 import tensorflow as tf
 
 # Sklearn deep learning package
+from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.ensemble import VotingClassifier
 
 class ADABoost :
@@ -28,15 +29,16 @@ class ADABoost :
         self.x_train = img_data
         self.y_train = label_data
         self.x_test = img_data
-        self.y_test = label_data
-        self.batch_size = 10
+        self.y_test = []
+        self.batch_size = 5
         self.epochs = 20
-        self.estimator_count = 3
+        self.estimator_count = 10
         self.weight_list = np.repeat(float(1/len(self.x_train)), len(self.x_train))
         self.hypothesis_list = []
         self.hypothesis_weight_list = []
-        
-        print(self.weight_list)
+
+        for i in range(len(label_data)) :
+            self.y_test.append(np.argmax(label_data[i]))
 
     # Draw Model learning result
     def plot_learning_curves(self, history) :
@@ -45,10 +47,11 @@ class ADABoost :
         plt.gca().set_ylim(0, 1)
         plt.show()
 
-    ################################# Distribute the ratio of training set and testing set #################################
     ################################# Construct CNN model #################################
     def CNN_model(self) :
-        model = tf.keras.Sequential()
+        model = tf.keras.Sequential() 
+        model._estimator_type = "classifier"
+
         model.add(layers.Conv2D(16, (3, 3),
                  strides = (1, 1),
                  input_shape = (800, 800, 3),
@@ -89,31 +92,6 @@ class ADABoost :
                     loss = tf.keras.losses.CategoricalCrossentropy(),
                     metrics = ['acc'])
 
-        ## parameters explaniation ##
-        # ### zca_whitening           -- implementing zca-whitening
-        # ### rotation_range          -- angle for image to rotate when data increasing
-        # ### width_shift_range       -- amplitude of horizontal offset when data increasing
-        # ### shear_range             -- strength of shear
-        # ### zoom_range              -- amplitude of random zoom
-        # ### horizontal_flip         -- implementing random horizontal rotation
-        # ### fill_mode               -- method for out-of-bound poinst while transformin
-
-        # datagen = ImageDataGenerator(
-        #     zca_whitening = False,
-        #     rotation_range = 40,
-        #     width_shift_range = 0.2,
-        #     height_shift_range = 0.2,
-        #     shear_range = 0.2,
-        #     zoom_range = 0.2,
-        #     horizontal_flip = True,
-        #     fill_mode = 'nearest'
-        # )
-
-        # # Import reforcement parameters for images
-        # datagen.fit(x_train)
-        # x_train = x_train / 255
-        # y_train = y_train / 255
-
         file_name = str(self.epochs) + '_' + str(self.batch_size)
 
         # Add earlyStopping and Tensorboard 
@@ -128,9 +106,29 @@ class ADABoost :
             callbacks = [TB, CB]
         )
 
-        ## self.plot_learning_curves(history)
-
         return model
+
+    def VotingClassifier_Tensorflow(self, classifier_list) :
+        probability_result = []
+        predict_result = []
+
+        assert len(classifier_list) == len(self.hypothesis_weight_list)
+
+        for i in range(len(classifier_list)) :
+            new_y_pred = classifier_list[i].predict(self.x_test) * self.hypothesis_weight_list[i]
+            probability_result.append(new_y_pred)
+        
+        for i in range(len(self.x_test)) :
+            temp_result = [0, 0, 0]
+
+            for j in range(len(classifier_list)) :
+                temp_result = temp_result + probability_result[j][i]
+            
+            predict_result.append(temp_result)
+
+        assert len(self.x_test) == len(predict_result)
+
+        return predict_result
     
     # Implement ADABoost
     def adaboost(self) :
@@ -147,7 +145,7 @@ class ADABoost :
             for j in range(len(y_pred)) :
                 total_error += self.weight_list[j]
 
-                if(np.argmax(y_pred[j]) != np.argmax(self.y_test[j])) :
+                if(np.argmax(y_pred[j]) != self.y_test[j]) :
                     error += self.weight_list[j]
                     error_count += 1
 
@@ -163,7 +161,7 @@ class ADABoost :
 
             # update training data weight
             for j in range(len(self.weight_list)) :
-                if(np.argmax(y_pred[j] != np.argmax(self.y_test[j]))) :
+                if(np.argmax(y_pred[j] != self.y_test[j])) :
                     self.weight_list[j] *= np.exp(new_hypothesis_weight)
 
             self.hypothesis_weight_list.append(new_hypothesis_weight)
@@ -191,11 +189,9 @@ class ADABoost :
 
         assert len(estimators_list) == self.estimator_count
 
-        vote_classifier = VotingClassifier(estimators = estimators_list,
-                                           voting = 'soft',
-                                           weights = self.hypothesis_weight_list)
+        y_pred = self.VotingClassifier_Tensorflow(self.hypothesis_list)
 
-        return vote_classifier
+        return y_pred 
 
 
 
